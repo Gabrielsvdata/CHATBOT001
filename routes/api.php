@@ -10,40 +10,38 @@ Route::get('/ping', function () {
     return response()->json(['message' => 'API OK']);
 });
 
-// Chatbot
-Route::post('/start-conversation', [ChatBotController::class, 'startConversation']);
-Route::post('/send-message', [ChatBotController::class, 'sendMessage']);
+// ======================================================
+// Rotas públicas (sem autenticação necessária)
+// ======================================================
 
-// Autenticação
+// Registro de usuário
 Route::post('/register', [AuthController::class, 'register']);
+
+// Login de usuário (gera token para autenticação)
 Route::post('/login', [AuthController::class, 'login']);
 
-// Conversas
-Route::get('/conversations', [ConversationController::class, 'index']);
-Route::post('/conversations', [ConversationController::class, 'store']);
+// ======================================================
+// Rotas protegidas (exigem autenticação via token Sanctum)
+// ======================================================
+Route::middleware('auth:sanctum')->group(function () {
 
-// Logout (requisição POST para realizar o logout)
-Route::middleware('auth:sanctum')->post('/logout', function (Request $request) {
-    // Revogar todos os tokens do usuário atual
-    $request->user()->tokens->delete();
+    // ================================================== 
+    // Rotas do ChatBot
+    // ==================================================
+    Route::post('/start-conversation', [ChatBotController::class, 'startConversation']);
+    Route::post('/send-message', [ChatBotController::class, 'sendMessage']);
 
-    // Resposta de sucesso em JSON
-    return response()->json(['message' => 'Logout efetuado com sucesso!']);
+    // ==================================================
+    // Rotas de Conversas
+    // ==================================================
+    Route::get('/conversations', [ConversationController::class, 'index'])
+        ->middleware('throttle:60,1');
+
+    Route::post('/conversations', [ConversationController::class, 'store'])
+        ->middleware('throttle:10,1');
+
+    // ==================================================
+    // Logout (revoga todos os tokens do usuário logado)
+    // ==================================================
+    Route::post('/logout', [AuthController::class, 'logout']);
 });
-
-
-/*GET http://127.0.0.1:8000/api/ping
-
-POST http://127.0.0.1:8000/api/start-conversation
-
-POST http://127.0.0.1:8000/api/send-message
-
-POST http://127.0.0.1:8000/api/register
-
-POST http://127.0.0.1:8000/api/login
-
-GET http://127.0.0.1:8000/api/conversations
-
-POST http://127.0.0.1:8000/api/conversations
-// 
-POST http://127.0.0.1:8000/api/logout*/

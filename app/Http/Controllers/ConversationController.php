@@ -8,39 +8,53 @@ use Illuminate\Support\Facades\Log;
 
 class ConversationController extends Controller
 {
-    // Método para listar todas as conversas
+    /**
+     * Lista todas as conversas do usuário autenticado.
+     */
     public function index()
     {
+        $user = auth('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Usuário não autenticado.'], 401);
+        }
+
         try {
-            // Obtém todas as conversas
-            $conversations = Conversation::all();
+            $conversations = Conversation::where('user_id', $user->id)->get();
+
+            if ($conversations->isEmpty()) {
+                return response()->json(['message' => 'Nenhuma conversa encontrada.'], 404);
+            }
+
             return response()->json($conversations);
         } catch (\Exception $e) {
-            // Loga o erro
-            Log::error('Erro ao listar conversas: ' . $e->getMessage());
+            Log::error("Erro ao listar conversas do usuário ID {$user->id}: " . $e->getMessage());
             return response()->json(['error' => 'Erro ao buscar conversas.'], 500);
         }
     }
 
-    // Método para criar uma nova conversa
+    /**
+     * Cria uma nova conversa para o usuário autenticado.
+     */
     public function store(Request $request)
     {
-        // Valida a entrada do request
-        $validated = $request->validate([
-            'user_id' => 'nullable|exists:users,id', // Verifica se o user_id existe na tabela users
-        ]);
+        $user = auth('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Usuário não autenticado.'], 401);
+        }
 
         try {
-            // Cria a conversa no banco de dados
+            Log::info("Criando conversa para o usuário ID: {$user->id}");
+
             $conversation = Conversation::create([
-                'user_id' => $validated['user_id'] ?? null, // Atribui user_id se válido
+                'user_id' => $user->id,
+                'started_at' => now(),
             ]);
 
-            // Retorna a conversa criada com código de status 201
             return response()->json($conversation, 201);
         } catch (\Exception $e) {
-            // Loga o erro
-            Log::error('Erro ao criar conversa: ' . $e->getMessage());
+            Log::error("Erro ao criar conversa para o usuário ID {$user->id}: " . $e->getMessage());
             return response()->json(['error' => 'Erro ao criar a conversa.'], 500);
         }
     }
